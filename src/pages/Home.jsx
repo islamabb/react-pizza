@@ -3,6 +3,8 @@ import Categories from '../components/Categories';
 import Sort from '../components/Sort';
 import PizzaBlock from '../components/PizzaBlock';
 import Skeleton from '../components/PizzaPlashder/Skeleton';
+import Pagination from '../components/Pagination';
+
 
 const sortList = [
   { name: 'популярности (DESC)', sortProperty: 'rating', order: 'desc' },
@@ -13,69 +15,74 @@ const sortList = [
   { name: 'алфавиту (DESC)', sortProperty: 'title', order: 'desc' }
 ];
 
-const Home = () => {
+const Home = ({ searchValue }) => {
+  console.log('searchValue в Home:', searchValue);
   const [items, setItems] = React.useState([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [categoryId, setCategoryId] = React.useState(0);
+  const [currentPage, setCurrentPage] = React.useState(1);
   const [sortType, setSortType] = React.useState(0);
 
   React.useEffect(() => {
-    setIsLoading(true);
-    
-    const sortObj = sortList[sortType];
-    const sortProperty = sortObj?.sortProperty || 'rating';
-    const order = sortObj?.order || 'desc';
-    
-    const category = categoryId > 0 ? `category=${categoryId}` : '';
-    
-    fetch(`https://689b16ffe727e9657f63b2f6.mockapi.io/Items?${category}${category ? '&' : ''}sortBy=${sortProperty}&order=${order}`)
-      .then((res) => {
-        if (!res.ok) {
-          throw new Error('Ошибка сети');
-        }
-        return res.json();
-      })
-      .then((data) => {
-        if (Array.isArray(data)) {
-          setItems(data);
-        } else {
-          console.error('Ожидался массив, но получено:', data);
-          setItems([]);
-        }
-      })
-      .catch((error) => {
-        console.error('Ошибка загрузки данных:', error);
-        setItems([]);
-      })
-      .finally(() => {
-        setIsLoading(false);
-        window.scrollTo(0, 0);
-      });
-  }, [categoryId, sortType]);
+  setIsLoading(true);
+
+  const sortObj = sortList[sortType];
+  const sortProperty = sortObj?.sortProperty || 'rating';
+  const order = sortObj?.order || 'desc';
+
+  const category = categoryId > 0 ? `category=${categoryId}` : '';
+  const search = searchValue ? `title=${encodeURIComponent(searchValue)}` : '';
+
+  const queryParams = [category, search].filter(Boolean).join('&');
+  const hasParams = queryParams ? '?' + queryParams : '';
+
+  const url = `https://689b16ffe727e9657f63b2f6.mockapi.io/Items?page=${currentPage}&limit=4&${hasParams}&sortBy=${sortProperty}&order=${order}`;
+
+  fetch(url)
+    .then((res) => {
+      if (!res) throw new Error('Ошибка сети');
+      return res.json();
+    })
+    .then((data) => {
+      setItems(Array.isArray(data) ? data : []);
+    })
+    .catch((error) => {
+      console.error('Ошибка загрузки данных:', error);
+      setItems([]);
+    })
+    .finally(() => {
+      setIsLoading(false);
+      window.scrollTo(0, 0);
+    });
+}, [categoryId, sortType, searchValue, currentPage]);// Важно: зависимость от searchValue
 
   return (
     <div className="container">
       <div className="content__top">
-        <Categories value={categoryId} onClickCategory={(i) => setCategoryId(i)}/>
-        <Sort value={sortType} onClickSort={(i) => setSortType(i)}/>
+        <Categories value={categoryId} onClickCategory={(i) => setCategoryId(i)} />
+        <Sort value={sortType} onClickSort={(i) => setSortType(i)} />
       </div>
       <h2 className="content__title">Все пиццы</h2>
       <div className="content__items">
-        {isLoading ?
-          [...new Array(6)].map((_, index) => <Skeleton key={index}/>)
-          : items.map((obj) => (
-          <PizzaBlock
-            key={obj.id}
-            title={obj.title}
-            price={obj.price}
-            image={obj.imageUrl}
-            sizes={obj.sizes}
-            types={obj.types}
-          />
-        ))}
+        {isLoading
+          ? [...new Array(6)].map((_, index) => <Skeleton key={index} />)
+          : items.length > 0
+          ? items.map((obj) => (
+              <PizzaBlock
+                key={obj.id}
+                title={obj.title}
+                price={obj.price}
+                image={obj.imageUrl}
+                sizes={obj.sizes}
+                types={obj.types}
+              />
+            ))
+          : <div>Пицца не найдена по запросу "{searchValue}"</div>
+        }
       </div>
+        <Pagination onChangePage={number => setCurrentPage(number)}/>
     </div>
-  )
-}
+  );
+};
 
 export default Home;
