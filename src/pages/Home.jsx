@@ -4,6 +4,9 @@ import Sort from '../components/Sort';
 import PizzaBlock from '../components/PizzaBlock';
 import Skeleton from '../components/PizzaPlashder/Skeleton';
 import Pagination from '../components/Pagination';
+import {SearchContext} from '../App'
+import { useSelector, useDispatch } from 'react-redux';
+import { setCategoryId} from '../redux/slices/filterSlice'
 
 
 const sortList = [
@@ -15,52 +18,66 @@ const sortList = [
   { name: 'алфавиту (DESC)', sortProperty: 'title', order: 'desc' }
 ];
 
-const Home = ({ searchValue }) => {
-  console.log('searchValue в Home:', searchValue);
+const Home = () => {
+  const dispatch = useDispatch();
+  const {categoryId, sort} = useSelector((state) => state.filter);
+
+  const {searchValue} = React.useContext(SearchContext);
   const [items, setItems] = React.useState([]);
   const [isLoading, setIsLoading] = React.useState(true);
-  const [categoryId, setCategoryId] = React.useState(0);
   const [currentPage, setCurrentPage] = React.useState(1);
-  const [sortType, setSortType] = React.useState(0);
 
-  React.useEffect(() => {
+  const onChangeCategory = (id) => {
+  console.log(id)
+  dispatch(setCategoryId(id));
+  }
+
+
+React.useEffect(() => {
   setIsLoading(true);
 
-  const sortObj = sortList[sortType];
-  const sortProperty = sortObj?.sortProperty || 'rating';
-  const order = sortObj?.order || 'desc';
+  const sortObj = sortList[sort.sortProperty];
+  
+  // Создаем объект параметров
+  const params = {
+    page: currentPage,
+    limit: 4,
+    sortBy: sortObj?.sortProperty || 'rating',
+    order: sortObj?.order || 'desc'
+  };
 
-  const category = categoryId > 0 ? `category=${categoryId}` : '';
-  const search = searchValue ? `title=${encodeURIComponent(searchValue)}` : '';
+  // Добавляем опциональные параметры
+  if (categoryId > 0) params.category = categoryId;
+  if (searchValue) params.search = searchValue;
 
-  const queryParams = [category, search].filter(Boolean).join('&');
-  const hasParams = queryParams ? '?' + queryParams : '';
+  // Формируем URL с помощью URLSearchParams
+  const queryString = new URLSearchParams(params).toString();
+  const url = `https://689b16ffe727e9657f63b2f6.mockapi.io/Items?${queryString}`;
 
-  const url = `https://689b16ffe727e9657f63b2f6.mockapi.io/Items?page=${currentPage}&limit=4&${hasParams}&sortBy=${sortProperty}&order=${order}`;
+  console.log('Fetching:', url); // Для дебага
 
   fetch(url)
     .then((res) => {
-      if (!res) throw new Error('Ошибка сети');
+      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
       return res.json();
     })
     .then((data) => {
       setItems(Array.isArray(data) ? data : []);
     })
     .catch((error) => {
-      console.error('Ошибка загрузки данных:', error);
+      console.error('Fetch error:', error);
       setItems([]);
     })
     .finally(() => {
       setIsLoading(false);
-      window.scrollTo(0, 0);
     });
-}, [categoryId, sortType, searchValue, currentPage]);// Важно: зависимость от searchValue
+}, [categoryId, sort.sortProperty, searchValue, currentPage]);
 
   return (
     <div className="container">
       <div className="content__top">
-        <Categories value={categoryId} onClickCategory={(i) => setCategoryId(i)} />
-        <Sort value={sortType} onClickSort={(i) => setSortType(i)} />
+        <Categories value={categoryId} onChangeCategory={onChangeCategory} />
+        <Sort />
       </div>
       <h2 className="content__title">Все пиццы</h2>
       <div className="content__items">
