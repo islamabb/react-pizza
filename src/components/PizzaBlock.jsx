@@ -1,16 +1,29 @@
 import React, { useState } from 'react';
+import { useDispatch, useSelector} from 'react-redux'
 
-function PizzaBlock({ title, price, image, sizes = [26], types = [0] }) {
-  const typeNames = ['тонкое', 'традиционное'];
+import {addItem} from '../redux/slices/cartSlice'
+const typeNames = ['тонкое', 'традиционное'];
+
+function PizzaBlock({ id, title, price, image, sizes = [26], types = [0] }) {
+  const dispatch = useDispatch();
   const [activeType, setActiveType] = useState(0);
   const [activeSize, setActiveSize] = useState(0);
-  const [pizzaCount, setPizzaCount] = useState(0);
+  const [pizzaCount] = useState(0);
 
   const safeTypes = Array.isArray(types) ? types : [0];
   const safeSizes = Array.isArray(sizes) ? sizes : [26];
 
+  
   const onClickAdd = () => {
-    setPizzaCount(pizzaCount + 1);
+    const item = {
+      id,
+      title,
+      price,
+      image,
+      type: typeNames[activeType],
+      size: activeSize
+    };
+    dispatch(addItem(item));
   };
 
   return (
